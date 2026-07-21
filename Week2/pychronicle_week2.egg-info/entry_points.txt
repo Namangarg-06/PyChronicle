@@ -1,0 +1,2 @@
+[console_scripts]
+pychronicle-week2 = week2.runner:main

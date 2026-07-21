@@ -1,0 +1,17 @@
+[project]
+name = "pychronicle-week2"
+version = "0.1.0"
+description = "Week 2 Python execution tracer and terminal UI using an existing PyChronicle SQLite database."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "textual>=0.25.0",
+    "rich>=13.0"
+]
+
+[project.scripts]
+pychronicle-week2 = "week2.runner:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
