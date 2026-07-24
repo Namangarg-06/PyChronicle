@@ -41,7 +41,6 @@ class ExecutionTracer:
         if not filename or filename == "<string>":
             filename = self._root_filename
 
-        # Only capture lines from the target script.
         if Path(filename).resolve() != self.script_path:
             return self._trace
 
