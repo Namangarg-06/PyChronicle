@@ -163,41 +163,31 @@ class TimelineUI:
     
     def _run_demo(self) -> None:
         """Auto-display all timeline steps in sequence (demo mode)."""
-        import time
         for i, _ in enumerate(self.timeline_snapshots):
             self._display_step(i)
-            if i < len(self.timeline_snapshots) - 1:
-                time.sleep(1)  # Pause 1 second between steps for readability
     
     def _run_interactive(self) -> None:
         """Run interactive mode where user navigates with N/P/Q commands."""
         self._display_step(0)
         
         while True:
-            try:
-                user_input = input("\nCommand: ").strip().upper()
-                
-                if user_input == "Q":
-                    print("\nExiting timeline viewer...")
-                    break
-                elif user_input == "N":
-                    if self.current_step < len(self.timeline_snapshots) - 1:
-                        self._display_step(self.current_step + 1)
-                    else:
-                        print("\nAlready at the last step.")
-                        self._display_step(self.current_step)
-                elif user_input == "P":
-                    if self.current_step > 0:
-                        self._display_step(self.current_step - 1)
-                    else:
-                        print("\nAlready at the first step.")
-                        self._display_step(self.current_step)
+            user_input = input("\nCommand: ").strip().upper()
+            
+            if user_input == "Q":
+                print("\nExiting timeline viewer...")
+                break
+            elif user_input == "N":
+                if self.current_step < len(self.timeline_snapshots) - 1:
+                    self._display_step(self.current_step + 1)
                 else:
-                    print("\nInvalid command. Use [N] Next, [P] Previous, or [Q] Quit.")
+                    print("\nAlready at the last step.")
                     self._display_step(self.current_step)
-            except KeyboardInterrupt:
-                print("\n\nExiting timeline viewer...")
-                break
-            except EOFError:
-                # Handle non-interactive mode (e.g., when run with --no-ui)
-                break
+            elif user_input == "P":
+                if self.current_step > 0:
+                    self._display_step(self.current_step - 1)
+                else:
+                    print("\nAlready at the first step.")
+                    self._display_step(self.current_step)
+            else:
+                print("\nInvalid command. Use [N] Next, [P] Previous, or [Q] Quit.")
+                self._display_step(self.current_step)

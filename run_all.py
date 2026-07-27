@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 def run_project(week_name, project_dir, script_file, args=None):
     """Run a specific project"""
     try:
-        print(f"\n🚀 Running {week_name}...")
+        print(f"\nRunning {week_name}...")
         base_dir = Path(__file__).parent
         python_exe = str(base_dir / ".venv" / "Scripts" / "python.exe")
         
@@ -28,13 +28,13 @@ def run_project(week_name, project_dir, script_file, args=None):
         )
         
         output = f"\n{'='*60}\n"
-        output += f"📋 {week_name} Output:\n"
+        output += f" {week_name} Output:\n"
         output += f"{'='*60}\n"
         
         if result.returncode == 0:
-            output += f"✅ {week_name} - COMPLETED SUCCESSFULLY!\n"
+            output += f" {week_name} - COMPLETED SUCCESSFULLY!\n"
         else:
-            output += f"❌ {week_name} - ERROR!\n"
+            output += f" {week_name} - ERROR!\n"
         
         if result.stdout:
             output += f"\nOutput:\n{result.stdout}\n"
@@ -43,9 +43,9 @@ def run_project(week_name, project_dir, script_file, args=None):
             
         return week_name, output, result.returncode
     except subprocess.TimeoutExpired:
-        return week_name, f"\n❌ {week_name} - TIMEOUT\n", 1
+        return week_name, f"\n {week_name} - TIMEOUT\n", 1
     except Exception as e:
-        return week_name, f"\n❌ {week_name} - ERROR: {str(e)}\n", 1
+        return week_name, f"\n {week_name} - ERROR: {str(e)}\n", 1
 
 def main():
     """Run all projects"""
@@ -58,7 +58,7 @@ def main():
         ("Week4", base_dir / "Week4", base_dir / "Week4" / "sample_script.py", []),
     ]
     
-    print("🚀 STARTING ALL PROJECTS IN PARALLEL...")
+    print("STARTING ALL PROJECTS IN PARALLEL...")
     print("="*60)
     
     results = {}
@@ -71,7 +71,7 @@ def main():
                 future = executor.submit(run_project, week_name, project_dir, script_file, args)
                 futures.append(future)
             else:
-                print(f"⚠️  {week_name} script not found: {script_file}")
+                print(f" {week_name} script not found: {script_file}")
         
         # Collect results
         for future in futures:
@@ -80,7 +80,7 @@ def main():
     
     # Print all results
     print("\n" + "="*60)
-    print("📊 EXECUTION RESULTS")
+    print(" EXECUTION RESULTS")
     print("="*60)
     
     for week_name, (output, returncode) in results.items():
@@ -91,13 +91,13 @@ def main():
     total = len(results)
     
     print("\n" + "="*60)
-    print(f"🎯 FINAL SUMMARY: {passed}/{total} projects executed successfully")
+    print(f" FINAL SUMMARY: {passed}/{total} projects executed successfully")
     print("="*60)
     
     if passed == total:
-        print("✅ ALL PROJECTS RAN SUCCESSFULLY! 🎉")
+        print(" ALL PROJECTS RAN SUCCESSFULLY! ")
     else:
-        print(f"❌ {total - passed} project(s) failed")
+        print(f" {total - passed} project(s) failed")
 
 if __name__ == "__main__":
     main()

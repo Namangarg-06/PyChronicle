@@ -1,7 +1,11 @@
 import argparse
 from pathlib import Path
 import sys
-
+# Add project root to the Python path
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+    
 from week2.db import ensure_schema, resolve_db_path
 from week2.tracer import ExecutionTracer
 from week2.ui import Week2App

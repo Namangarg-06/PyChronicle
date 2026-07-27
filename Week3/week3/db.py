@@ -1,20 +1,13 @@
 import shutil
-import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
-DB_SCHEMA = {
-    "execution_records": (
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "timestamp TEXT NOT NULL,"
-        "filename TEXT NOT NULL,"
-        "function_name TEXT NOT NULL,"
-        "line_number INTEGER NOT NULL,"
-        "locals_json TEXT NOT NULL"
-    ),
-}
-
-DEFAULT_DB_NAME = "pychronicle.db"
+from shared.db import (
+    DEFAULT_DB_NAME,
+    ensure_schema,
+    fetch_execution_records,
+    insert_execution_record,
+)
 
 
 def resolve_db_path(db_path: Optional[str] = None) -> Path:
@@ -56,62 +49,3 @@ def resolve_db_path(db_path: Optional[str] = None) -> Path:
         f"Could not locate an existing SQLite database file named '{DEFAULT_DB_NAME}'. "
         "Provide --db-path to specify the path explicitly."
     )
-
-
-def ensure_schema(db_path: Path) -> None:
-    """Ensure the schema required for Week 3 execution tracing exists."""
-    conn = sqlite3.connect(str(db_path))
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "CREATE TABLE IF NOT EXISTS execution_records (" + DB_SCHEMA["execution_records"] + ")"
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def insert_execution_record(
-    timestamp: str,
-    filename: str,
-    function_name: str,
-    line_number: int,
-    locals_json: str,
-    db_path: Path,
-) -> None:
-    """Insert a single execution record into the database."""
-    ensure_schema(db_path)
-    conn = sqlite3.connect(str(db_path))
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO execution_records (timestamp, filename, function_name, line_number, locals_json) VALUES (?, ?, ?, ?, ?)",
-            (timestamp, filename, function_name, line_number, locals_json),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def fetch_execution_records(db_path: Path) -> List[Dict[str, Any]]:
-    """Fetch all recorded execution events."""
-    conn = sqlite3.connect(str(db_path))
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, timestamp, filename, function_name, line_number, locals_json FROM execution_records ORDER BY id"
-        )
-        rows = cursor.fetchall()
-        return [
-            {
-                "id": row[0],
-                "timestamp": row[1],
-                "filename": row[2],
-                "function_name": row[3],
-                "line_number": row[4],
-                "locals_json": row[5],
-            }
-            for row in rows
-        ]
-    finally:
-        conn.close()
