@@ -4,11 +4,11 @@ import sys
 
 from week3.db import ensure_schema, resolve_db_path
 from week3.tracer import ExecutionTracer
-from week3.ui import Week2App
+from week3.ui import TimelineUI
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run PyChronicle Week 3 tracing UI.")
+    parser = argparse.ArgumentParser(description="Run PyChronicle Week 3 tracing and timeline viewer.")
     parser.add_argument(
         "--script",
         type=str,
@@ -24,12 +24,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-ui",
         action="store_true",
-        help="Run the tracer without launching the Textual UI.",
+        help="Run the tracer without launching the timeline UI.",
+    )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run the timeline viewer in demo mode (auto-display all steps).",
     )
     return parser.parse_args()
 
 
 def run_tracer(script_path: Path, db_path: Path) -> None:
+    """Run execution tracer on the target script."""
     ensure_schema(db_path)
     tracer = ExecutionTracer(db_path=db_path, script_path=script_path)
     tracer.run()
@@ -47,11 +53,18 @@ def main() -> int:
         print(f"Error: script '{script_path}' does not exist.")
         return 1
 
+    # Run the tracer first
+    run_tracer(script_path=script_path, db_path=db_path)
+
     if args.no_ui:
-        run_tracer(script_path=script_path, db_path=db_path)
         print("Tracing complete. Records saved to database.")
+        print("Week3 - COMPLETED SUCCESSFULLY!")
         return 0
 
-    app = Week2App(db_path=db_path, script_path=script_path)
-    app.run()
+    # Display timeline (interactive or demo mode)
+    print("\nLaunching Timeline Viewer...\n")
+    timeline_ui = TimelineUI(db_path=db_path, demo_mode=args.demo)
+    timeline_ui.run()
+    
+    print("\nWeek3 - COMPLETED SUCCESSFULLY!")
     return 0

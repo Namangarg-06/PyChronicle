@@ -1,241 +1,203 @@
+"""
+PyChronicle Week 3 - Interactive Timeline Viewer
+
+Provides a terminal-based interface to browse recorded execution states
+with support for navigating through variable changes over time.
+"""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from rich.syntax import Syntax
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.containers import Container, Horizontal
-from textual.message import Message
-from textual.widgets import Footer, Header, Static
-from textual.widgets._rich_log import RichLog
-
 from week3.db import fetch_execution_records
-from week3.tracer import ExecutionTracer
 
 
-class CodeViewer(Static):
-    def __init__(self, script_path: Path, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.script_path = script_path
-        self.code_lines = self._load_source()
-
-    def _load_source(self) -> List[str]:
-        with open(self.script_path, "r", encoding="utf-8") as source_file:
-            return source_file.readlines()
-
-    def highlight_line(self, line_number: int) -> None:
-        highlight_lines = {line_number} if line_number else set()
-        syntax = Syntax(
-            "".join(self.code_lines),
-            self.script_path.suffix.lstrip("."),
-            line_numbers=True,
-            highlight_lines=highlight_lines,
-        )
-        self.update(syntax)
-
-
-class VariablesPanel(Static):
-    def show_state(self, state: Optional[Dict[str, Any]]) -> None:
-        if not state:
-            self.update("No variables captured yet.")
-            return
-
-        lines = []
-        for key, value in sorted(state.items()):
-            lines.append(f"{key} = {self._format_value(value)}")
-        self.update("\n".join(lines))
-
-    def _format_value(self, value: Any) -> str:
-        if isinstance(value, str):
-            return repr(value)
-        if isinstance(value, (dict, list, tuple, set)):
-            return json.dumps(value, indent=2, sort_keys=True)
-        return str(value)
-
-
-class TimelineChanged(Message):
-    def __init__(self, index: int) -> None:
-        super().__init__()
-        self.index = index
-
-
-class TimelineSlider(Static):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.can_focus = True
-        self._steps = 0
-        self._value = 0
-
-    def set_steps(self, steps: int) -> None:
-        self._steps = max(0, steps)
-        self._value = min(self._value, self._steps - 1 if self._steps else 0)
-        self.refresh()
-
-    def set_value(self, value: int) -> None:
-        self._value = max(0, min(self._steps - 1 if self._steps else 0, value))
-        self.refresh()
-
-    def _emit_change(self) -> None:
-        self.post_message(TimelineChanged(self._value))
-
-    def on_click(self, event: object) -> None:
-        if self._steps <= 1:
-            return
-        width = max(1, self.size.width - 2)
-        ratio = max(0.0, min(1.0, event.x / width))
-        self._value = int(ratio * (self._steps - 1))
-        self.refresh()
-        self._emit_change()
-
-    def on_key(self, event: object) -> None:
-        if event.key == "left":
-            self._value = max(0, self._value - 1)
-            self.refresh()
-            self._emit_change()
-        elif event.key == "right":
-            self._value = min(self._steps - 1 if self._steps else 0, self._value + 1)
-            self.refresh()
-            self._emit_change()
-
-    def render(self) -> str:
-        if self._steps == 0:
-            return "Timeline: no execution steps"
-
-        markers = []
-        for index in range(self._steps):
-            markers.append("●" if index == self._value else "○")
-        return f"Timeline [{' '.join(markers)}] step {self._value + 1}/{self._steps}"
-
-
-class StatusBar(Footer):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.message = "Press q to quit, r to rerun trace."
-
-    def render(self) -> str:
-        return self.message
-
-
-class Week2App(App):
-    BINDINGS = [
-        Binding("q", "quit", "Quit", show=True),
-        Binding("r", "rerun", "Rerun", show=True),
-    ]
-
-    CSS = """
-    Screen {
-        background: black;
-    }
-    #code-viewer {
-        width: 2fr;
-        height: 1fr;
-        border: round gray;
-        padding: 1;
-    }
-    #variables-panel {
-        width: 1fr;
-        height: 1fr;
-        border: round cyan;
-        padding: 1;
-    }
-    #timeline {
-        height: 5;
-        border: round green;
-        padding: 1;
-    }
-    #trace-log {
-        height: 10;
-        border: round magenta;
-        padding: 1;
-    }
-    #status {
-        background: gray23;
-        color: white;
-    }
-    """
-
-    def __init__(self, db_path: Path, script_path: Path, **kwargs) -> None:
-        super().__init__(**kwargs)
+class TimelineUI:
+    """Interactive terminal-based timeline viewer for PyChronicle Week 3."""
+    
+    def __init__(self, db_path: Path, demo_mode: bool = False) -> None:
+        """Initialize the timeline UI with database path.
+        
+        Args:
+            db_path: Path to the SQLite database containing execution records.
+            demo_mode: If True, auto-display all steps without waiting for input.
+        """
         self.db_path = db_path
-        self.script_path = script_path
-        self.code_viewer: CodeViewer | None = None
-        self.variables_panel: VariablesPanel | None = None
-        self.timeline: TimelineSlider | None = None
-        self.trace_log: RichLog | None = None
-        self.execution_steps: List[Dict[str, Any]] = []
-        self.selected_index = 0
-        self.tracer = ExecutionTracer(db_path=self.db_path, script_path=self.script_path)
-
-    def compose(self) -> ComposeResult:
-        self.code_viewer = CodeViewer(self.script_path, id="code-viewer")
-        self.variables_panel = VariablesPanel(id="variables-panel")
-        self.timeline = TimelineSlider(id="timeline")
-        self.trace_log = RichLog(id="trace-log", highlight=False, markup=False, wrap=True)
-
-        yield Header(show_clock=True)
-        with Container():
-            with Horizontal():
-                yield self.code_viewer
-                yield self.variables_panel
-            yield self.timeline
-            yield self.trace_log
-        yield StatusBar(id="status")
-
-    def on_mount(self) -> None:
-        self.load_trace_summary()
-
-    def load_trace_summary(self) -> None:
-        records = fetch_execution_records(self.db_path)
-        self.execution_steps = self.tracer.build_execution_snapshots(records)
-        if self.trace_log is not None:
-            self.trace_log.clear()
-            for record in records[-20:]:
-                self.trace_log.write(
-                    f"{record['timestamp']} {Path(record['filename']).name}:{record['function_name']}:{record['line_number']} {record['locals_json']}"
-                )
-
-        if self.timeline is not None:
-            self.timeline.set_steps(len(self.execution_steps))
-        if self.execution_steps:
-            self.selected_index = max(0, min(self.selected_index, len(self.execution_steps) - 1))
-            self.show_step(self.selected_index)
+        self.records = fetch_execution_records(db_path)
+        self.timeline_snapshots = self._build_timeline_snapshots()
+        self.current_step = 0
+        self.demo_mode = demo_mode
+        
+    def _build_timeline_snapshots(self) -> List[Dict[str, Any]]:
+        """Build timeline snapshots from execution records with delta information.
+        
+        Returns:
+            List of snapshots, each containing record info, deltas, and timestamps.
+        """
+        snapshots: List[Dict[str, Any]] = []
+        previous_state: Dict[str, Any] = {}
+        
+        for record in self.records:
+            locals_json = record.get("locals_json", "{}")
+            current_state = json.loads(locals_json)
+            
+            # Extract deltas (changes from previous state)
+            deltas = {}
+            if isinstance(current_state, dict) and current_state.get("__pychronicle_payload__") == "delta":
+                deltas = current_state.get("changes", {})
+            else:
+                # Calculate delta by comparing with previous state
+                for key, value in current_state.items():
+                    prev_value = previous_state.get(key)
+                    if prev_value != value:
+                        deltas[key] = {"old": prev_value, "new": value}
+                previous_state = dict(current_state)
+            
+            snapshot = {
+                "record": record,
+                "deltas": deltas,
+                "timestamp": record.get("timestamp", ""),
+                "line_number": record.get("line_number", 0),
+            }
+            snapshots.append(snapshot)
+        
+        return snapshots
+    
+    def _format_value(self, value: Any) -> str:
+        """Format a value for display in the timeline.
+        
+        Args:
+            value: The value to format.
+            
+        Returns:
+            String representation of the value.
+        """
+        if isinstance(value, str):
+            return f'"{value}"'
+        elif value is None:
+            return "None"
         else:
-            self.show_step(0)
-
-    def show_step(self, index: int) -> None:
-        if not self.execution_steps:
-            if self.code_viewer is not None:
-                self.code_viewer.highlight_line(0)
-            if self.variables_panel is not None:
-                self.variables_panel.show_state({})
+            return str(value)
+    
+    def _display_step(self, step_index: int) -> None:
+        """Display a specific step in the timeline.
+        
+        Args:
+            step_index: Index of the step to display.
+        """
+        if not self.timeline_snapshots:
+            print("No execution records available.")
             return
-
-        self.selected_index = max(0, min(index, len(self.execution_steps) - 1))
-        step = self.execution_steps[self.selected_index]
-        record = step["record"]
-        state = step["state"]
-
-        if self.code_viewer is not None:
-            self.code_viewer.highlight_line(int(record["line_number"]))
-        if self.variables_panel is not None:
-            self.variables_panel.show_state(state)
-        if self.timeline is not None:
-            self.timeline.set_value(self.selected_index)
-
-        status = self.query_one(StatusBar)
-        status.message = f"Step {self.selected_index + 1}/{len(self.execution_steps)} — {Path(record['filename']).name}:{record['line_number']}"
-
-    def handle_timeline_changed(self, message: TimelineChanged) -> None:
-        self.show_step(message.index)
-
-    def action_rerun(self) -> None:
-        status = self.query_one(StatusBar)
-        status.message = "Rerunning tracer and refreshing records..."
-        if self.trace_log is not None:
-            self.trace_log.write("[bold yellow]Rerunning tracer...[/]")
-        self.tracer.run()
-        self.load_trace_summary()
-        status.message = "Trace rerun complete. Press q to quit, r to rerun again."
+        
+        # Clamp step index to valid range
+        step_index = max(0, min(step_index, len(self.timeline_snapshots) - 1))
+        self.current_step = step_index
+        
+        snapshot = self.timeline_snapshots[step_index]
+        record = snapshot["record"]
+        deltas = snapshot["deltas"]
+        
+        # Clear screen (simple approach)
+        print("\033[2J\033[H", end="")
+        
+        # Display header
+        print("=" * 50)
+        print("PYCHRONICLE TIMELINE - WEEK 3")
+        print("=" * 50)
+        print()
+        
+        # Display step info
+        total_steps = len(self.timeline_snapshots)
+        print(f"Step {step_index + 1}/{total_steps}")
+        print(f"Line: {record.get('line_number')}")
+        print(f"Function: {record.get('function_name')}")
+        print(f"Timestamp: {record.get('timestamp')}")
+        print()
+        
+        # Display variable changes
+        if deltas:
+            print("Variable Changes:")
+            print("-" * 50)
+            for var_name, change_info in deltas.items():
+                if isinstance(change_info, dict) and "old" in change_info:
+                    old_val = change_info["old"]
+                    new_val = change_info["new"]
+                    print(f"  {var_name}")
+                    print(f"    Old: {self._format_value(old_val)}")
+                    print(f"    New: {self._format_value(new_val)}")
+                else:
+                    # New variable
+                    print(f"  {var_name}")
+                    print(f"    Old: (new)")
+                    print(f"    New: {self._format_value(change_info)}")
+            print()
+        else:
+            print("No variable changes in this step.")
+            print()
+        
+        # Display navigation menu
+        print("-" * 50)
+        print("[N] Next   [P] Previous   [Q] Quit")
+        print("-" * 50)
+    
+    def run(self) -> None:
+        """Run the interactive timeline viewer.
+        
+        Displays the first execution step and enters an interactive loop
+        where users can navigate through the timeline using N/P/Q commands.
+        
+        If demo_mode is True, automatically displays all steps in sequence.
+        """
+        if not self.timeline_snapshots:
+            print("No execution records found in database.")
+            return
+        
+        if self.demo_mode:
+            # Demo mode: auto-display all steps
+            self._run_demo()
+        else:
+            # Interactive mode: user navigates with commands
+            self._run_interactive()
+    
+    def _run_demo(self) -> None:
+        """Auto-display all timeline steps in sequence (demo mode)."""
+        import time
+        for i, _ in enumerate(self.timeline_snapshots):
+            self._display_step(i)
+            if i < len(self.timeline_snapshots) - 1:
+                time.sleep(1)  # Pause 1 second between steps for readability
+    
+    def _run_interactive(self) -> None:
+        """Run interactive mode where user navigates with N/P/Q commands."""
+        self._display_step(0)
+        
+        while True:
+            try:
+                user_input = input("\nCommand: ").strip().upper()
+                
+                if user_input == "Q":
+                    print("\nExiting timeline viewer...")
+                    break
+                elif user_input == "N":
+                    if self.current_step < len(self.timeline_snapshots) - 1:
+                        self._display_step(self.current_step + 1)
+                    else:
+                        print("\nAlready at the last step.")
+                        self._display_step(self.current_step)
+                elif user_input == "P":
+                    if self.current_step > 0:
+                        self._display_step(self.current_step - 1)
+                    else:
+                        print("\nAlready at the first step.")
+                        self._display_step(self.current_step)
+                else:
+                    print("\nInvalid command. Use [N] Next, [P] Previous, or [Q] Quit.")
+                    self._display_step(self.current_step)
+            except KeyboardInterrupt:
+                print("\n\nExiting timeline viewer...")
+                break
+            except EOFError:
+                # Handle non-interactive mode (e.g., when run with --no-ui)
+                break

@@ -64,6 +64,28 @@ class ExecutionTracer:
 
         return self._trace
 
+    def _build_delta(self, previous_state: Optional[Dict[str, Any]], current_state: Dict[str, Any]) -> Dict[str, Any]:
+        """Build delta (difference) between two states."""
+        if previous_state is None:
+            return dict(current_state)
+
+        delta: Dict[str, Any] = {}
+        for key, value in current_state.items():
+            previous_value = previous_state.get(key)
+            if previous_value != value:
+                delta[key] = value
+        return delta
+
+    def _replay_deltas(self, previous_state: Optional[Dict[str, Any]], delta_records: list) -> Dict[str, Any]:
+        """Replay delta records to reconstruct state."""
+        state = dict(previous_state or {})
+        for delta in delta_records:
+            if not isinstance(delta, dict):
+                continue
+            for key, value in delta.items():
+                state[key] = value
+        return state
+
     def run(self) -> None:
         """Run the target script under tracing."""
         sys.settrace(self._trace)
