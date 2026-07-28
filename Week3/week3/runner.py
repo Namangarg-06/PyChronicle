@@ -35,6 +35,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run the timeline viewer in demo mode (auto-display all steps).",
     )
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run the timeline viewer in compact auto mode for pipeline execution (no input() calls).",
+    )
     return parser.parse_args()
 
 
@@ -67,7 +72,7 @@ def main() -> int:
 
     # Display timeline (interactive or demo mode)
     print("\nLaunching Timeline Viewer...\n")
-    timeline_ui = TimelineUI(db_path=db_path, demo_mode=args.demo)
+    timeline_ui = TimelineUI(db_path=db_path, demo_mode=args.demo, auto_mode=args.auto)
     timeline_ui.run()
     
     print("\nWeek3 - COMPLETED SUCCESSFULLY!")

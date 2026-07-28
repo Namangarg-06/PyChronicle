@@ -30,7 +30,6 @@ class ExecutionTracer:
         self.script_path = script_path.resolve()
         self._root_filename = str(self.script_path)
         self.globals_obj = globals_obj if globals_obj is not None else {}
-        self._should_stop = False
         self._previous_state: Optional[Dict[str, Any]] = None
 
     def _serialize_state_payload(self, current_state: Dict[str, Any]) -> str:

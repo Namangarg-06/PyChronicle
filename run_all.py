@@ -54,8 +54,8 @@ def main():
     projects = [
         ("Week1", base_dir / "pychoweek1", base_dir / "pychoweek1" / "main.py", ["sample.py"]),
         ("Week2", base_dir / "Week2", base_dir / "Week2" / "run_week2.py", ["--no-ui"]),
-        ("Week3", base_dir / "Week3", base_dir / "Week3" / "run_week3.py", ["--demo"]),
-        ("Week4", base_dir / "Week4", base_dir / "Week4" / "sample_script.py", []),
+        ("Week3", base_dir / "Week3", base_dir / "Week3" / "run_week3.py", ["--auto"]),
+        ("Week4", base_dir / "Week4", base_dir / "Week4" / "run_week4.py", ["run", "--no-ui"]),
     ]
     
     print("STARTING ALL PROJECTS IN PARALLEL...")

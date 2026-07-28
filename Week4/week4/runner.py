@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import logging
 import sys
 from pathlib import Path
@@ -16,41 +15,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 app = typer.Typer(help="Trace Python scripts and inspect execution state.", add_completion=False)
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run PyChronicle Week 4 tracing CLI.")
-    subparsers = parser.add_subparsers(dest="command")
-
-    run_parser = subparsers.add_parser("run", help="Trace a Python script and launch the UI.")
-    run_parser.add_argument(
-        "script_path",
-        nargs="?",
-        default="sample_script.py",
-        help="Path to the Python script to trace.",
-    )
-    run_parser.add_argument(
-        "--db-path",
-        type=str,
-        default=None,
-        help="Path to the existing SQLite database file.",
-    )
-    run_parser.add_argument(
-        "--no-ui",
-        action="store_true",
-        help="Run the tracer without launching the Textual UI.",
-    )
-    run_parser.add_argument(
-        "--watch",
-        action="append",
-        default=[],
-        help="Variable name to watch in the UI; repeat the option to track multiple variables.",
-    )
-    return parser
-
-
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    return build_parser().parse_args(argv)
 
 
 def run_tracer(script_path: Path, db_path: Path) -> None:
@@ -105,23 +69,7 @@ def run_command(
         raise typer.Exit(code=1) from exc
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    if argv is None:
-        argv = sys.argv[1:]
-    if not argv:
-        app(prog_name="pychronicle")
-        return 0
-
-    parsed = parse_args(argv)
-    if parsed.command == "run":
-        run_command(
-            script_path=parsed.script_path,
-            db_path=parsed.db_path,
-            no_ui=parsed.no_ui,
-            watch=parsed.watch,
-        )
-        return 0
-
+def main() -> int:
     app(prog_name="pychronicle")
     return 0
 

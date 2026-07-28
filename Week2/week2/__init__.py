@@ -1,1 +1,1 @@
-# Week 2 PyChronicle package initializer.
+"""PyChronicle Week 2."""

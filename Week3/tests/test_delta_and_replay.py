@@ -2,8 +2,8 @@ import json
 import sqlite3
 from pathlib import Path
 
-from week2.db import ensure_schema, fetch_execution_records, insert_execution_record
-from week2.tracer import ExecutionTracer, serialize_locals
+from week3.db import ensure_schema, fetch_execution_records, insert_execution_record
+from week3.tracer import ExecutionTracer, serialize_locals
 
 
 def test_delta_serialization_and_replay(tmp_path: Path) -> None:

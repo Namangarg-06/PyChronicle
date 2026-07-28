@@ -1,1 +1,2 @@
-# Shared package initializer.
+"""PyChronicle Week 3."""
+

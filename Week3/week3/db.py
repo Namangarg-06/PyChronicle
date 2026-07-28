@@ -1,13 +1,80 @@
+"""PyChronicle Week 3 - Database operations for execution tracing."""
+
+import datetime
+import json
+import sqlite3
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
-from shared.db import (
-    DEFAULT_DB_NAME,
-    ensure_schema,
-    fetch_execution_records,
-    insert_execution_record,
-)
+DEFAULT_DB_NAME = "pychronicle.db"
+
+
+def ensure_schema(db_path: Path) -> None:
+    """Create the execution_records table if it doesn't exist."""
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS execution_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                function_name TEXT NOT NULL,
+                line_number INTEGER NOT NULL,
+                locals_json TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def insert_execution_record(
+    timestamp: str,
+    filename: str,
+    function_name: str,
+    line_number: int,
+    locals_json: str,
+    db_path: Path,
+) -> None:
+    """Insert a new execution record into the database."""
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO execution_records (timestamp, filename, function_name, line_number, locals_json)
+            VALUES (?, ?, ?, ?, ?)
+        """, (timestamp, filename, function_name, line_number, locals_json))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_execution_records(db_path: Path) -> List[Dict[str, Any]]:
+    """Fetch all execution records from the database, ordered by ID."""
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, timestamp, filename, function_name, line_number, locals_json
+            FROM execution_records
+            ORDER BY id ASC
+        """)
+        rows = cursor.fetchall()
+        records = []
+        for row in rows:
+            records.append({
+                "id": row[0],
+                "timestamp": row[1],
+                "filename": row[2],
+                "function_name": row[3],
+                "line_number": row[4],
+                "locals_json": row[5],
+            })
+        return records
+    finally:
+        conn.close()
 
 
 def resolve_db_path(db_path: Optional[str] = None) -> Path:
@@ -49,3 +116,4 @@ def resolve_db_path(db_path: Optional[str] = None) -> Path:
         f"Could not locate an existing SQLite database file named '{DEFAULT_DB_NAME}'. "
         "Provide --db-path to specify the path explicitly."
     )
+
