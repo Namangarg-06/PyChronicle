@@ -1,0 +1,107 @@
+/* Style rules for the PyChronicle Textual UI Dashboard */
+
+Screen {
+    background: #0f1419;
+    color: #e6b450;
+    layout: vertical;
+}
+
+Header {
+    background: #14191f;
+    color: #ffb454;
+    text-style: bold;
+    height: 3;
+    border-bottom: double #ffb454;
+}
+
+Footer {
+    background: #14191f;
+    color: #5c6773;
+    height: 1;
+}
+
+#main-container {
+    layout: horizontal;
+    height: 1fr;
+    width: 100%;
+}
+
+#code-container {
+    width: 60%;
+    height: 100%;
+    border-right: tall #ffb454;
+    background: #0f1419;
+    padding: 1 2;
+    overflow: auto scroll;
+}
+
+#inspector-container {
+    width: 40%;
+    height: 100%;
+    background: #14191f;
+    padding: 1 2;
+    layout: vertical;
+}
+
+.panel-title {
+    text-align: center;
+    color: #ffb454;
+    text-style: bold;
+    background: #1d242c;
+    height: 3;
+    content-align: center middle;
+    border: round #ffb454;
+    margin-bottom: 0;
+    margin-top: 1;
+}
+
+#variables-list {
+    height: 1fr;
+    border: round #5c6773;
+    background: #0f1419;
+    padding: 0 1;
+    overflow: auto scroll;
+}
+
+#watch-history-list {
+    height: 1fr;
+    border: round #5c6773;
+    background: #0f1419;
+    padding: 0 1;
+    overflow: auto scroll;
+}
+
+#watch-input {
+    background: #1d242c;
+    color: #e6b450;
+    border: round #5c6773;
+    height: 3;
+    margin-top: 1;
+}
+
+#controls-container {
+    height: 6;
+    width: 100%;
+    background: #14191f;
+    border-top: double #ffb454;
+    padding: 1 2;
+    layout: vertical;
+    content-align: center middle;
+}
+
+#slider-label {
+    text-align: center;
+    color: #a6e22e;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#timeline-bar {
+    width: 100%;
+    height: 3;
+    background: #1d242c;
+    color: #e6b450;
+    text-align: center;
+    content-align: center middle;
+    border: round #5c6773;
+}
