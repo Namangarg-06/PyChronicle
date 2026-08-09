@@ -1,5 +1,4 @@
 import os
-import pytest
 from pychronicle.ast_parser import find_assignments, parse_file
 
 def test_find_assignments_simple():

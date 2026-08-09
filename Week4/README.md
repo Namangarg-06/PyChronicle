@@ -1,17 +1,18 @@
-# PyChronicle Week 4
+# Week 4
 
-This release packages the tracer as a proper CLI utility and improves the Textual UI with watch variables and better navigation.
+This week packages the tracer as a CLI and adds a basic interactive UI for stepping through execution history.
 
-## Installation
-
-```bash
-pip install -e .
-```
-
-## Usage
+## Run
 
 ```bash
-pychronicle run sample_script.py --db-path /path/to/pychronicle.db
+pychronicle run sample_script.py
 ```
 
-Use `--no-ui` to run the tracer without launching the Textual interface and `--watch name` to track selected variables in the UI.
+## Options
+
+```bash
+pychronicle run sample_script.py --no-ui
+pychronicle run sample_script.py --watch count --watch total
+```
+
+The app can trace a script, save execution data, and inspect variable state over time from the terminal UI.

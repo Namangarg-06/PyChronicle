@@ -1,73 +1,51 @@
 # PyChronicle
 
-PyChronicle is an **AST-Powered Time-Travel Debugger** for Python.
+PyChronicle is a Python debugging tool that lets you replay execution step by step instead of debugging only forward in time.
 
-Using Python's Abstract Syntax Tree (AST) manipulation and runtime tracing (`sys.settrace`), PyChronicle records the delta state of all local/global variables at every step of execution into an in-memory or file-backed SQLite database. Developers can then use an interactive Terminal User Interface (TUI) to scrub backwards and forwards through time to inspect variable mutations step by step.
+It uses Python's AST and runtime tracing to capture variable changes while a script runs, stores them in SQLite, and shows them in a Textual terminal UI so you can move backward and forward through execution history.
 
----
+## Core idea
 
-## Key Features
+- Parse Python source with the AST.
+- Track assignments and variable mutations during execution.
+- Save state changes as time-based deltas.
+- Inspect the program timeline in a terminal UI.
 
-1. **AST Rewriter & Parser:** Parses Python code using `ast.NodeVisitor` to identify assignments (single, annotated, augmented, walrus `:=`, `for` loop targets, `with` context variables, and starred unpacking `*b`).
-2. **Execution Engine:** High-performance Python tracer (`sys.settrace`) capturing variable mutations with sub-0.1ms write latency.
-3. **State Storage Engine:** Fast SQLite schema storing chronological variable deltas with point-in-time querying.
-4. **Interactive Terminal UI:** Built with Textual. Allows scrubbing backward/forward through steps, viewing source line highlights, inspecting local scope variables, and tracking variable watch histories.
+## Features
 
----
+- AST-based script analysis
+- Runtime tracing via `sys.settrace`
+- SQLite-backed execution history
+- Timeline scrubbing for previous and next states
+- Optional variable watch tracking
+- CLI-based workflow for running traced scripts
 
-## Installation & Quick Start
+## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/Namangarg-06/PyChronicle.git
-cd PyChronicle
-
-# Install in editable mode
-pip install -e .
+cd Pychronicle
+python -m pip install -e .
 ```
 
-### Running the Debugger
+## Usage
 
 ```bash
-# Debug a script via CLI
 pychronicle run path/to/script.py
-
-# Or run module directly
-python -m pychronicle.tui path/to/script.py
+pychronicle run path/to/script.py --no-ui
+pychronicle run path/to/script.py --watch x --watch y
 ```
 
-### Running Tests & Benchmarks
+## Project structure
 
-```bash
-# Run pytest test suite
-pytest
+- `pychronicle/` - main package
+- `tests/` - project tests
+- `Week2/`, `Week3/`, `Week4/` - week-by-week implementations
+- `run_all.py` and `check_all.py` - combined runner scripts
 
-# Run trace validation and storage performance benchmark
-python tests/benchmark_audit.py
-```
+## Development status
 
----
-
-## TUI Keyboard Controls
-
-- **Left Arrow (`←`)**: Previous execution step
-- **Right Arrow (`→`)**: Next execution step
-- **Home**: Jump to first step
-- **End**: Jump to final step
-- **Page Up / Page Down**: Jump -10 / +10 steps
-- **`q`**: Quit PyChronicle
-
----
-
-## Contributors
-
-- **Tanmay Dhoot** ([@mylifeastanmay-hub](https://github.com/mylifeastanmay-hub)) - *Core Developer & Optimization Lead*
-- **Naman Garg** ([@Namangarg-06](https://github.com/Namangarg-06)) - *Project Lead*
-
-For full list of contributions, see [CONTRIBUTORS.md](file:///C:/Users/mylif/.gemini/antigravity/scratch/PyChronicle/CONTRIBUTORS.md).
-
----
+This project is a multi-week implementation covering AST parsing, execution tracing, SQLite storage, and a terminal UI for debugging.
 
 ## License
 
-MIT License
+MIT
