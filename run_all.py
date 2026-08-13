@@ -5,8 +5,24 @@ Run all Pychronicle projects together
 
 import subprocess
 import os
+import tempfile
+import webbrowser
+import html
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+
+
+def truncate_text(text, max_lines=20, max_chars=2000):
+    if not text:
+        return ""
+    # prefer line-based truncation
+    lines = text.splitlines()
+    if len(lines) > max_lines:
+        truncated = "\n".join(lines[:max_lines])
+        return truncated + f"\n... (truncated, total {len(lines)} lines)"
+    if len(text) > max_chars:
+        return text[:max_chars] + f"\n... (truncated, total {len(text)} chars)"
+    return text
 
 def run_project(week_name, project_dir, script_file, args=None):
     """Run a specific project"""
@@ -27,20 +43,32 @@ def run_project(week_name, project_dir, script_file, args=None):
             timeout=60
         )
         
-        output = f"\n{'='*60}\n"
-        output += f" {week_name} Output:\n"
-        output += f"{'='*60}\n"
-        
-        if result.returncode == 0:
-            output += f" {week_name} - COMPLETED SUCCESSFULLY!\n"
-        else:
-            output += f" {week_name} - ERROR!\n"
-        
+        # Build full raw output and save to temp file for full inspection
+        status_text = "COMPLETED SUCCESSFULLY" if result.returncode == 0 else "ERROR"
+        full_parts = ["="*60, f" {week_name} Output:", "="*60, f"Status: {status_text}"]
         if result.stdout:
-            output += f"\nOutput:\n{result.stdout}\n"
+            full_parts.append("Stdout:\n" + result.stdout)
         if result.stderr:
-            output += f"\nErrors:\n{result.stderr}\n"
-            
+            full_parts.append("Stderr:\n" + result.stderr)
+        full_output = "\n".join(full_parts)
+
+        # save full output to temp file
+        temp_dir = tempfile.gettempdir()
+        log_file = Path(temp_dir) / f"pychronicle_{week_name}_full_output.txt"
+        try:
+            log_file.write_text(full_output, encoding="utf-8")
+        except Exception:
+            # best-effort; ignore write failures
+            pass
+
+        # Build a concise, truncated output for console and HTML preview
+        parts = [f"{week_name} - {status_text}"]
+        if result.stdout:
+            parts.append("Stdout:\n" + truncate_text(result.stdout))
+        if result.stderr:
+            parts.append("Stderr:\n" + truncate_text(result.stderr))
+
+        output = "\n".join(parts)
         return week_name, output, result.returncode
     except subprocess.TimeoutExpired:
         return week_name, f"\n {week_name} - TIMEOUT\n", 1
@@ -99,5 +127,91 @@ def main():
     else:
         print(f" {total - passed} project(s) failed")
 
+    # Generate HTML report and open it in the browser
+    report_html = generate_html_report(results, passed, total)
+    report_file = save_html_report(report_html)
+    webbrowser.open_new_tab(report_file)
+
+
+def generate_html_report(results, passed, total):
+    rows = []
+    for week_name, (output, returncode) in results.items():
+        status = "SUCCESS" if returncode == 0 else "FAIL"
+        # Extract truncated Stdout and Stderr for preview
+        stdout = ""
+        stderr = ""
+        if "Stdout:" in output:
+            after = output.split("Stdout:", 1)[1]
+            if "Stderr:" in after:
+                stdout, stderr = after.split("Stderr:", 1)
+            else:
+                stdout = after
+        elif "Stderr:" in output:
+            stderr = output.split("Stderr:", 1)[1]
+        else:
+            stdout = output
+
+        # link to full log if present
+        temp_dir = tempfile.gettempdir()
+        log_path = Path(temp_dir) / f"pychronicle_{week_name}_full_output.txt"
+        log_link = ""
+        try:
+            if log_path.exists():
+                log_link = f"<a href=\"{log_path.as_uri()}\" target=\"_blank\">Full log</a>"
+        except Exception:
+            log_link = ""
+
+        rows.append(
+            f"<tr>"
+            f"<td>{week_name}</td>"
+            f"<td class=\"{'success' if returncode==0 else 'fail'}\">{status}</td>"
+            f"<td><pre>{html.escape(stdout.strip())}</pre></td>"
+            f"<td><pre>{html.escape(stderr.strip())}</pre></td>"
+            f"<td>{log_link}</td>"
+            f"</tr>"
+        )
+
+    summary = f"{passed}/{total} successful"
+    return f"""
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"UTF-8\">
+    <title>Pychronicle Run Report</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }}
+        th {{ background: #f4f4f4; }}
+        pre {{ white-space: pre-wrap; word-wrap: break-word; margin: 0; }}
+        .success {{ color: green; font-weight: bold; }}
+        .fail {{ color: red; font-weight: bold; }}
+    </style>
+</head>
+<body>
+    <h1>Pychronicle Run Report</h1>
+    <p><strong>Summary:</strong> {summary}</p>
+    <table>
+        <thead>
+            <tr><th>Project</th><th>Status</th><th>Stdout</th><th>Stderr</th><th>Full Log</th></tr>
+        </thead>
+        <tbody>
+            {''.join(rows)}
+        </tbody>
+    </table>
+</body>
+</html>
+"""
+
+
+def save_html_report(html_content):
+    temp_dir = tempfile.gettempdir()
+    report_file = Path(temp_dir) / "pychronicle_run_report.html"
+    report_file.write_text(html_content, encoding="utf-8")
+    return report_file.as_uri()
+
+
 if __name__ == "__main__":
     main()
+
+
