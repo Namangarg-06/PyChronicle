@@ -16,6 +16,7 @@ nested_a, (nested_b, nested_c) = 10, (20, 30)
 # 4. Augmented Assignment
 counter = 0
 counter += 1
+multiplier = 1
 multiplier *= 2
 
 # 5. Attribute Assignment
