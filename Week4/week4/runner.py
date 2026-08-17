@@ -3,14 +3,19 @@ from __future__ import annotations
 import json
 import logging
 import sys
+# Add project root to the Python path to allow for absolute imports
+from pathlib import Path
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import typer
 
-from week4.db import ensure_schema, fetch_execution_records, resolve_db_path
-from week4.tracer import ExecutionTracer
-from week4.ui import Week4App
+from .db import ensure_schema, fetch_execution_records, resolve_db_path
+from .tracer import ExecutionTracer
+from .ui import Week4App
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -206,18 +211,19 @@ def _print_time_travel_debugger(script_path: Path, db_path: Path, initial_step: 
 
 
 def _resolve_script_path(script_path: str) -> Path:
-    candidate = Path(script_path).expanduser()
-    if candidate.is_absolute():
-        resolved = candidate.resolve()
-    else:
-        resolved = (Path.cwd() / candidate).resolve()
+    """Resolves the absolute path to the script, handling default sample_script.py."""
+    path_obj = Path(script_path).expanduser()
+    
+    # If the path is relative, resolve it against the current working directory
+    if not path_obj.is_absolute():
+        path_obj = (Path.cwd() / path_obj).resolve()
 
-    if not resolved.exists() and candidate.name == "sample_script.py":
-        default_sample = Path(__file__).resolve().parents[1] / "sample_script.py"
-        if default_sample.exists():
-            resolved = default_sample.resolve()
-
-    return resolved
+    # If the script doesn't exist and it's named 'sample_script.py', try the default location
+    if not path_obj.exists() and path_obj.name == "sample_script.py":
+        default_sample_path = (Path(__file__).resolve().parents[1] / "sample_script.py").resolve()
+        if default_sample_path.exists():
+            return default_sample_path
+    return path_obj
 
 
 @app.command("run", help="Trace a Python script and launch the UI.")
@@ -261,15 +267,7 @@ def run_command(
 
 def main() -> int:
     raw_args = sys.argv[1:]
-    if raw_args and not raw_args[0].startswith("-") and raw_args[0] not in {"run", "--help", "-h"}:
-        try:
-            _run_direct_script(raw_args[0])
-            return 0
-        except Exception as exc:
-            logger.exception("Direct script execution failed")
-            typer.echo(f"Error: {exc}", err=True)
-            return 1
-    app()
+    app(args=raw_args)
     return 0
 
 

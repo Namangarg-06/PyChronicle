@@ -12,8 +12,8 @@ from textual.message import Message
 from textual.widgets import Button, Footer, Header, Input, Label, Static
 from textual.widgets._rich_log import RichLog
 
-from week4.db import fetch_execution_records
-from week4.tracer import ExecutionTracer
+from .db import fetch_execution_records
+from .tracer import ExecutionTracer
 
 
 class CodeViewer(Static):
@@ -26,11 +26,17 @@ class CodeViewer(Static):
         with open(self.script_path, "r", encoding="utf-8") as source_file:
             return source_file.readlines()
 
+    def compose(self) -> ComposeResult:
+        language = self.script_path.suffix.lstrip(".") or "python"
+        syntax = Syntax("".join(self.code_lines), language, line_numbers=True)
+        yield Static(syntax)
+
     def highlight_line(self, line_number: int) -> None:
         highlight_lines = {line_number} if line_number else set()
+        language = self.script_path.suffix.lstrip(".") or "python"
         syntax = Syntax(
             "".join(self.code_lines),
-            self.script_path.suffix.lstrip("."),
+            language,
             line_numbers=True,
             highlight_lines=highlight_lines,
         )
@@ -293,7 +299,7 @@ class Week4App(App):
         if self.status_bar is not None:
             self.status_bar.set_message(message)
 
-    def handle_timeline_changed(self, message: TimelineChanged) -> None:
+    def on_timeline_changed(self, message: TimelineChanged) -> None:
         self.show_step(message.index)
 
     def action_previous_step(self) -> None:

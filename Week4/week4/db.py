@@ -65,15 +65,12 @@ def resolve_db_path(db_path: Optional[str] = None) -> Path:
 
 def ensure_schema(db_path: Path) -> None:
     """Ensure the execution_records table exists."""
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS execution_records (" + DB_SCHEMA["execution_records"] + ")"
         )
         conn.commit()
-    finally:
-        conn.close()
 
 
 def insert_execution_record(
@@ -86,37 +83,24 @@ def insert_execution_record(
 ) -> None:
     """Insert a single execution record into the database."""
     ensure_schema(db_path)
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO execution_records (timestamp, filename, function_name, line_number, locals_json) VALUES (?, ?, ?, ?, ?)",
             (timestamp, filename, function_name, line_number, locals_json),
         )
         conn.commit()
-    finally:
-        conn.close()
 
 
 def fetch_execution_records(db_path: Path) -> List[Dict[str, Any]]:
     """Fetch all recorded execution events."""
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(
             "SELECT id, timestamp, filename, function_name, line_number, locals_json FROM execution_records ORDER BY id"
         )
         rows = cursor.fetchall()
-        return [
-            {
-                "id": row[0],
-                "timestamp": row[1],
-                "filename": row[2],
-                "function_name": row[3],
-                "line_number": row[4],
-                "locals_json": row[5],
-            }
-            for row in rows
-        ]
-    finally:
-        conn.close()
+        if rows:
+            return [dict(row) for row in rows]
+    return []

@@ -1,6 +1,7 @@
 import os
 import argparse
 from parser import parse_assignments
+from pathlib import Path
 from db import init_db, insert_variable_state, get_all_variable_states, DB_NAME
 
 def main():
@@ -10,15 +11,14 @@ def main():
     args = parser.parse_args()
 
     # Step 0: Ensure target file exists
-    # If using relative path and script is run from week1 folder, adjust path or find the file
-    target_file = args.file
-    if not os.path.exists(target_file):
-        # Let's also check if we are running from root and the file is week1/sample.py, or vice versa
-        alternative_path = os.path.join(os.path.dirname(__file__), target_file)
-        if os.path.exists(alternative_path):
-            target_file = alternative_path
+    target_file_path = Path(args.file)
+    if not target_file_path.exists():
+        # Check if the file exists relative to the current script's directory
+        alternative_path = Path(__file__).parent / args.file
+        if alternative_path.exists():
+            target_file_path = alternative_path
         else:
-            print(f"Error: Target file '{args.file}' does not exist.")
+            print(f"Error: Target file '{args.file}' does not exist at '{target_file_path}' or '{alternative_path}'.")
             return
 
     # Step 1: Initialize database
@@ -26,9 +26,9 @@ def main():
     init_db(args.db)
 
     # Step 2: Parse AST
-    print(f"Parsing AST for file: {target_file}")
-    try:
-        assignments = parse_assignments(target_file)
+    print(f"Parsing AST for file: {target_file_path}") # Corrected variable name
+    try: # Pass the resolved Path object
+        assignments = parse_assignments(str(target_file_path))
     except Exception as e:
         print(f"Error parsing file: {e}")
         return

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import threading
 from typing import List
 
 from rich.syntax import Syntax
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
-from textual.widgets import Static, Footer, Header
+from textual.widgets import Static, Header
 from textual.widgets._rich_log import RichLog
 
 from week2.db import fetch_execution_records
@@ -25,11 +26,13 @@ class CodeViewer(Static):
             return source_file.readlines()
 
     def compose(self) -> ComposeResult:
-        syntax = Syntax("".join(self.code_lines), self.script_path.suffix.lstrip("."), line_numbers=True)
+        language = self.script_path.suffix.lstrip(".") or "python"
+        syntax = Syntax("".join(self.code_lines), language, line_numbers=True)
         yield Static(syntax)
 
     def highlight_line(self, line_number: int) -> None:
-        self.update(Syntax("".join(self.code_lines), self.script_path.suffix.lstrip("."), line_numbers=True, highlight_lines={line_number}))
+        language = self.script_path.suffix.lstrip(".") or "python"
+        self.update(Syntax("".join(self.code_lines), language, line_numbers=True, highlight_lines={line_number}))
 
 
 class Timeline(Static):
@@ -37,13 +40,17 @@ class Timeline(Static):
         yield Static("Timeline placeholder — captured events will appear as trace markers.")
 
 
-class StatusBar(Footer):
+class StatusBar(Static):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.message = "Press q to quit, r to rerun trace."
 
     def render(self) -> str:
         return self.message
+    
+    def set_message(self, message: str) -> None:
+        self.message = message
+        self.refresh()
 
 
 class Week2App(App):
@@ -106,12 +113,22 @@ class Week2App(App):
         if records:
             self.code_viewer.highlight_line(records[-1]["line_number"])
 
+    def _run_tracer_in_background(self) -> None:
+        """Helper to run the tracer in a separate thread."""
+        try:
+            tracer = ExecutionTracer(db_path=self.db_path, script_path=self.script_path)
+            tracer.run()
+            self.call_from_thread(self.load_trace_summary) # Refresh UI with new data
+            self.call_from_thread(getattr(self.query_one(StatusBar), 'set_message', lambda _: None), "Trace rerun complete. Press q to quit, r to rerun again.")
+        except Exception as e:
+            self.call_from_thread(self.trace_log.write, f"[bold red]Error during rerun: {e}[/]")
+            self.call_from_thread(getattr(self.query_one(StatusBar), 'set_message', lambda _: None), f"Error during rerun: {e}")
+
     def action_rerun(self) -> None:
         status = self.query_one(StatusBar)
-        status.message = "Rerunning tracer and refreshing records..."
+        status.set_message("Rerunning tracer and refreshing records...")
         if self.trace_log is not None:
             self.trace_log.write("[bold yellow]Rerunning tracer...[/]")
-        tracer = ExecutionTracer(db_path=self.db_path, script_path=self.script_path)
-        tracer.run()
-        self.load_trace_summary()
-        status.message = "Trace rerun complete. Press q to quit, r to rerun again."
+        
+        # Run the tracer in a separate thread to prevent UI freeze
+        threading.Thread(target=self._run_tracer_in_background, daemon=True).start()

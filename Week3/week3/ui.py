@@ -43,23 +43,23 @@ class TimelineUI:
         
         for record in self.records:
             locals_json = record.get("locals_json", "{}")
-            current_state = json.loads(locals_json)
+            payload = json.loads(locals_json)
             
-            # Extract deltas (changes from previous state)
-            deltas = {}
-            if isinstance(current_state, dict) and current_state.get("__pychronicle_payload__") == "delta":
-                deltas = current_state.get("changes", {})
+            # Reconstruct state by replaying deltas
+            current_state = dict(previous_state)
+            deltas_found = {}
+            if isinstance(payload, dict) and payload.get("__pychronicle_payload__") == "delta":
+                deltas_found = payload.get("changes", {})
+                for key, value in deltas_found.items():
+                    current_state[key] = value
             else:
-                # Calculate delta by comparing with previous state
-                for key, value in current_state.items():
-                    prev_value = previous_state.get(key)
-                    if prev_value != value:
-                        deltas[key] = {"old": prev_value, "new": value}
-                previous_state = dict(current_state)
+                # Handle full state snapshot if not a delta
+                current_state = payload
+                deltas_found = {k: v for k, v in current_state.items() if previous_state.get(k) != v}
             
             snapshot = {
                 "record": record,
-                "deltas": deltas,
+                "deltas": deltas_found,
                 "timestamp": record.get("timestamp", ""),
                 "line_number": record.get("line_number", 0),
             }
@@ -122,18 +122,8 @@ class TimelineUI:
         if deltas:
             print("Variable Changes:")
             print("-" * 50)
-            for var_name, change_info in deltas.items():
-                if isinstance(change_info, dict) and "old" in change_info:
-                    old_val = change_info["old"]
-                    new_val = change_info["new"]
-                    print(f"  {var_name}")
-                    print(f"    Old: {self._format_value(old_val)}")
-                    print(f"    New: {self._format_value(new_val)}")
-                else:
-                    # New variable
-                    print(f"  {var_name}")
-                    print(f"    Old: (new)")
-                    print(f"    New: {self._format_value(change_info)}")
+            for var_name, new_value in deltas.items():
+                print(f"  {var_name} -> {self._format_value(new_value)}")
             print()
         else:
             print("No variable changes in this step.")
@@ -193,13 +183,8 @@ class TimelineUI:
         
         if deltas:
             print("Variable Changes:")
-            for var_name, change_info in deltas.items():
-                if isinstance(change_info, dict) and "old" in change_info:
-                    old_val = change_info["old"]
-                    new_val = change_info["new"]
-                    print(f"  {var_name}: {self._format_value(old_val)} -> {self._format_value(new_val)}")
-                else:
-                    print(f"  {var_name}: (new) -> {self._format_value(change_info)}")
+            for var_name, new_value in deltas.items():
+                print(f"  {var_name} -> {self._format_value(new_value)}")
         else:
             print("No variable changes in this step.")
         print()

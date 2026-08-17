@@ -5,6 +5,7 @@ Check all Pychronicle projects together - Run all tests
 
 import subprocess
 import os
+import sys
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -13,8 +14,7 @@ def run_tests(week_name, test_dir, test_file):
     """Run tests for a specific week"""
     try:
         print(f"\n🧪 Testing {week_name}...")
-        base_dir = Path(__file__).parent
-        python_exe = str(base_dir / ".venv" / "Scripts" / "python.exe")
+        python_exe = sys.executable # Use the current Python executable
         
         # For Week1 (unittest), use unittest discovery
         if week_name == "Week1":

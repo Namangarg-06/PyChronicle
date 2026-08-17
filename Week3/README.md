@@ -1,18 +1,18 @@
-# PyChronicle Week 2
+# PyChronicle Week 3
 
-This Week 2 project builds a Python execution tracer that stores every executed line into an existing SQLite database and exposes a Textual terminal UI.
+This Week 3 project builds on Week 2 by introducing a delta-based state tracking system and an interactive timeline viewer to inspect variable changes over time.
 
 ## Requirements
 - Python 3.11+
-- An existing Week 1 SQLite database file (for example `pychronicle.db`)
+- An existing Week 1 or Week 2 SQLite database file (e.g., `pychronicle.db`)
 - `pip install -r requirements.txt`
 
 ## Usage
-1. Place your existing Week 1 database file where the program can find it, or pass it explicitly with `--db-path`.
-2. Run the UI from the `Week2` folder:
+1. Place your existing database file where the program can find it, or pass it explicitly with `--db-path`.
+2. Run the UI from the `Week3` folder:
 
 ```bash
-python run_week2.py --db-path /path/to/pychronicle.db
+python run_week3.py --db-path /path/to/pychronicle.db
 ```
 
 If `pychronicle.db` is located in the same directory or a parent directory, the application will find it automatically.

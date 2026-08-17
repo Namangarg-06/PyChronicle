@@ -11,8 +11,7 @@ def init_db(db_path: str = DB_NAME):
     Args:
         db_path (str): Path to the SQLite database file.
     """
-    conn = sqlite3.connect(db_path)
-    try:
+    with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS variable_states (
@@ -24,8 +23,6 @@ def init_db(db_path: str = DB_NAME):
             )
         """)
         conn.commit()
-    finally:
-        conn.close()
 
 def insert_variable_state(
     line_number: int, 
@@ -41,9 +38,8 @@ def insert_variable_state(
         variable_name (str): Name of the variable.
         serialized_value (str): Evaluated or static string representation of the assigned value.
         db_path (str): Path to the SQLite database file.
-    """
-    conn = sqlite3.connect(db_path)
-    try:
+    """ 
+    with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
         timestamp = datetime.datetime.now().isoformat()
         cursor.execute("""
@@ -51,8 +47,6 @@ def insert_variable_state(
             VALUES (?, ?, ?, ?)
         """, (timestamp, line_number, variable_name, serialized_value))
         conn.commit()
-    finally:
-        conn.close()
 
 def get_all_variable_states(db_path: str = DB_NAME) -> List[Dict[str, Any]]:
     """
@@ -64,21 +58,12 @@ def get_all_variable_states(db_path: str = DB_NAME) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: List of dictionary rows containing the stored metadata.
     """
-    conn = sqlite3.connect(db_path)
-    try:
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("SELECT id, timestamp, line_number, variable_name, serialized_value FROM variable_states")
         rows = cursor.fetchall()
         
-        states = []
-        for row in rows:
-            states.append({
-                "id": row[0],
-                "timestamp": row[1],
-                "line_number": row[2],
-                "variable_name": row[3],
-                "serialized_value": row[4]
-            })
-        return states
-    finally:
-        conn.close()
+        if rows:
+            return [dict(row) for row in rows]
+        return []

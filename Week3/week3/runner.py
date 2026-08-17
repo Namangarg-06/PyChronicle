@@ -1,10 +1,5 @@
 import argparse
 from pathlib import Path
-import sys
-# Add project root to the Python path
-project_root = Path(__file__).resolve().parents[2]
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
     
 from week3.db import ensure_schema, resolve_db_path
 from week3.tracer import ExecutionTracer
@@ -53,11 +48,9 @@ def run_tracer(script_path: Path, db_path: Path) -> None:
 def main() -> int:
     args = parse_args()
     db_path = resolve_db_path(args.db_path)
-    script_path = Path(args.script).expanduser()
-    if args.script == "sample_script.py":
-        default_sample = Path(__file__).resolve().parents[1] / "sample_script.py"
-        script_path = default_sample
-    script_path = script_path.resolve()
+    script_path = Path(args.script).expanduser().resolve()
+    if not script_path.exists() or script_path.name == "sample_script.py":
+        script_path = (Path(__file__).resolve().parents[1] / "sample_script.py").resolve()
     if not script_path.exists():
         print(f"Error: script '{script_path}' does not exist.")
         return 1

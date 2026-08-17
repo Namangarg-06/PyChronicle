@@ -14,32 +14,31 @@ def resolve_db_path(db_path: Optional[str] = None) -> Path:
         if resolved.exists() and resolved.is_file():
             return resolved
 
-        resolved.parent.mkdir(parents=True, exist_ok=True)
-        week1_db = Path(__file__).resolve().parents[2] / "pychoweek1" / DEFAULT_DB_NAME
+        # If a path is provided but doesn't exist, try to create its parent directory
+        # and copy the Week 1 DB to it as a new Week 2 DB.
+        resolved.parent.mkdir(parents=True, exist_ok=True) 
+        week1_db = Path(__file__).resolve().parents[2] / "Pychoweek1" / DEFAULT_DB_NAME
         if week1_db.exists() and week1_db.is_file():
             shutil.copyfile(week1_db, resolved)
             return resolved
 
         raise FileNotFoundError(
-            f"Database path '{resolved}' does not exist or is not a file. "
-            "Provide an existing Week 1 SQLite database file."
+            f"Provided database path '{resolved}' does not exist and could not be initialized from Week 1 data."
         )
 
+    # If no path is given, search common locations
     base = Path.cwd()
     for candidate in [base] + list(base.parents):
         candidate_path = candidate / DEFAULT_DB_NAME
         if candidate_path.exists() and candidate_path.is_file():
             return candidate_path
 
+    # As a fallback, try to copy from the week1 project directory
     week2_dir = Path(__file__).resolve().parents[1]
     week2_db = week2_dir / DEFAULT_DB_NAME
-    if not week2_db.exists():
-        week1_db = Path(__file__).resolve().parents[2] / "pychoweek1" / DEFAULT_DB_NAME
-        if week1_db.exists() and week1_db.is_file():
-            shutil.copyfile(week1_db, week2_db)
-            return week2_db
-
-    if week2_db.exists() and week2_db.is_file():
+    week1_db = Path(__file__).resolve().parents[2] / "Pychoweek1" / DEFAULT_DB_NAME
+    if week1_db.exists() and week1_db.is_file():
+        shutil.copyfile(week1_db, week2_db)
         return week2_db
 
     raise FileNotFoundError(
@@ -50,8 +49,7 @@ def resolve_db_path(db_path: Optional[str] = None) -> Path:
 
 def ensure_schema(db_path: Path) -> None:
     """Create the execution_records table if it doesn't exist."""
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS execution_records (
@@ -64,8 +62,6 @@ def ensure_schema(db_path: Path) -> None:
             )
         """)
         conn.commit()
-    finally:
-        conn.close()
 
 
 def insert_execution_record(
@@ -77,22 +73,19 @@ def insert_execution_record(
     db_path: Path,
 ) -> None:
     """Insert a new execution record into the database."""
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with sqlite3.connect(str(db_path)) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO execution_records (timestamp, filename, function_name, line_number, locals_json)
             VALUES (?, ?, ?, ?, ?)
         """, (timestamp, filename, function_name, line_number, locals_json))
         conn.commit()
-    finally:
-        conn.close()
 
 
 def fetch_execution_records(db_path: Path) -> List[Dict[str, Any]]:
     """Fetch all execution records from the database, ordered by ID."""
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
             SELECT id, timestamp, filename, function_name, line_number, locals_json
@@ -101,15 +94,6 @@ def fetch_execution_records(db_path: Path) -> List[Dict[str, Any]]:
         """)
         rows = cursor.fetchall()
         records = []
-        for row in rows:
-            records.append({
-                "id": row[0],
-                "timestamp": row[1],
-                "filename": row[2],
-                "function_name": row[3],
-                "line_number": row[4],
-                "locals_json": row[5],
-            })
-        return records
-    finally:
-        conn.close()
+        if rows:
+            records = [dict(row) for row in rows]
+    return records
